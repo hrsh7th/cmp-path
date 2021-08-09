@@ -125,6 +125,7 @@ source._candidates = function(_, context, dirname, offset, callback)
           else
             table.insert(items, {
               label = name,
+              filterText = '/' .. name,
               insertText = '/' .. name,
               kind = cmp.lsp.CompletionItemKind.File,
             })
@@ -133,6 +134,7 @@ source._candidates = function(_, context, dirname, offset, callback)
       elseif type == 'file' then
         table.insert(items, {
           label = name,
+          filterText = '/' .. name,
           insertText = '/' .. name,
           kind = cmp.lsp.CompletionItemKind.File,
         })
