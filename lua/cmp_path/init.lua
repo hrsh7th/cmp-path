@@ -107,7 +107,9 @@ source._candidates = function(_, context, dirname, offset, callback)
     if accept then
       if type == 'directory' then
         table.insert(items, {
+          word = '/' .. name,
           label = '/' .. name,
+          insertText = '/' .. name .. '/',
           kind = cmp.lsp.CompletionItemKind.Folder,
         })
       elseif type == 'link' then
@@ -115,7 +117,9 @@ source._candidates = function(_, context, dirname, offset, callback)
         if stat then
           if stat.type == 'directory' then
             table.insert(items, {
+              word = '/' .. name,
               label = '/' .. name,
+              insertText = '/' .. name .. '/',
               kind = cmp.lsp.CompletionItemKind.Folder,
             })
           else
