@@ -5,6 +5,10 @@ local PATH_REGEX = ([[\%(/PAT\+\)*\ze/PAT*]]):gsub('PAT', NAME_REGEX)
 
 local source = {}
 
+local defaults = {
+	max_lines = 10,
+}
+
 source.new = function()
   return setmetatable({}, { __index = source })
 end
@@ -82,13 +86,14 @@ source._stat = function(_, path)
 end
 
 local function lines_from(file, count)
-  lines = {}
+  lines = {'```'}
   for line in io.lines(file) do
     lines[#lines + 1] = line
     if count ~= nil and #lines >= count then
 	    break
     end
   end
+  lines[#lines + 1] = '```'
   return lines
 end
 
@@ -149,7 +154,7 @@ source._candidates = function(_, context, dirname, offset, callback)
               filterText = '/' .. name,
               insertText = '/' .. name,
               kind = cmp.lsp.CompletionItemKind.File,
-	      path = dirname .. '/' .. name,
+	      data = {path = dirname .. '/' .. name},
             })
           end
         end
@@ -159,7 +164,7 @@ source._candidates = function(_, context, dirname, offset, callback)
           filterText = '/' .. name,
           insertText = '/' .. name,
           kind = cmp.lsp.CompletionItemKind.File,
-	  path = dirname .. '/' .. name,
+	  data = {path = dirname .. '/' .. name},
         })
       end
     end
@@ -178,7 +183,7 @@ end
 
 function source:resolve(completion_item, callback)
   if completion_item.kind == cmp.lsp.CompletionItemKind.File then
-	completion_item.documentation = try_get_lines(completion_item.path, 10)
+	completion_item.documentation = try_get_lines(completion_item.data.path, 10)
   end
   callback(completion_item)
 end
