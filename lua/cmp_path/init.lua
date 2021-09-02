@@ -149,7 +149,7 @@ source._candidates = function(_, context, dirname, offset, callback)
               filterText = '/' .. name,
               insertText = '/' .. name,
               kind = cmp.lsp.CompletionItemKind.File,
-	      documentation = try_get_lines(dirname .. '/' .. name, 10),
+	      path = dirname .. '/' .. name,
             })
           end
         end
@@ -159,7 +159,7 @@ source._candidates = function(_, context, dirname, offset, callback)
           filterText = '/' .. name,
           insertText = '/' .. name,
           kind = cmp.lsp.CompletionItemKind.File,
-	  documentation = try_get_lines(dirname .. '/' .. name, 10),
+	  path = dirname .. '/' .. name,
         })
       end
     end
@@ -174,6 +174,13 @@ source._is_slash_comment = function(_)
   is_slash_comment = is_slash_comment or commentstring:match('/%*')
   is_slash_comment = is_slash_comment or commentstring:match('//')
   return is_slash_comment and not no_filetype
+end
+
+function source:resolve(completion_item, callback)
+  if completion_item.kind == cmp.lsp.CompletionItemKind.File then
+	completion_item.documentation = try_get_lines(completion_item.path, 10)
+  end
+  callback(completion_item)
 end
 
 return source
