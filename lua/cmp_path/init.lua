@@ -81,6 +81,26 @@ source._stat = function(_, path)
   return nil
 end
 
+local function lines_from(file, count)
+  lines = {}
+  for line in io.lines(file) do
+    lines[#lines + 1] = line
+    if count ~= nil and #lines >= count then
+	    break
+    end
+  end
+  return lines
+end
+
+local function try_get_lines(file, count)
+	status, ret = pcall(lines_from, file, count)
+	if status then
+		return ret
+	else
+		return nil
+	end
+end
+
 source._candidates = function(_, context, dirname, offset, callback)
   local fs, err = vim.loop.fs_scandir(dirname)
   if err then
@@ -88,6 +108,7 @@ source._candidates = function(_, context, dirname, offset, callback)
   end
 
   local items = {}
+
 
   local include_hidden = string.sub(context.cursor_before_line, offset + 1, offset + 1) == '.'
   while true do
@@ -128,6 +149,7 @@ source._candidates = function(_, context, dirname, offset, callback)
               filterText = '/' .. name,
               insertText = '/' .. name,
               kind = cmp.lsp.CompletionItemKind.File,
+	      documentation = try_get_lines(dirname .. '/' .. name, 10),
             })
           end
         end
@@ -137,6 +159,7 @@ source._candidates = function(_, context, dirname, offset, callback)
           filterText = '/' .. name,
           insertText = '/' .. name,
           kind = cmp.lsp.CompletionItemKind.File,
+	  documentation = try_get_lines(dirname .. '/' .. name, 10),
         })
       end
     end
