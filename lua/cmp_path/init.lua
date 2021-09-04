@@ -1,7 +1,7 @@
 local cmp = require'cmp'
 
 local NAME_REGEX = [[\%([^/\\:\*?<>'"`\|]\)]]
-local PATH_REGEX = ([[\%(/PAT\+\)*\ze/PAT*]]):gsub('PAT', NAME_REGEX)
+local PATH_REGEX = vim.regex(([[\%(/PAT\+\)*\ze/PAT*]]):gsub('PAT', NAME_REGEX))
 
 local source = {}
 
@@ -37,7 +37,7 @@ source.complete = function(self, params, callback)
 end
 
 source._dirname = function(self, params)
-  local s = vim.regex(PATH_REGEX):match_str(params.context.cursor_before_line)
+  local s = PATH_REGEX:match_str(params.context.cursor_before_line)
   if not s then
     return nil
   end
