@@ -17,8 +17,8 @@ source.get_keyword_pattern = function()
   return '/' .. NAME_REGEX .. '*'
 end
 
-source.complete = function(self, request, callback)
-  local dirname = self:_dirname(request)
+source.complete = function(self, params, callback)
+  local dirname = self:_dirname(params)
   if not dirname then
     return callback()
   end
@@ -28,7 +28,7 @@ source.complete = function(self, request, callback)
     return callback()
   end
 
-  self:_candidates(request.context, dirname, request.offset, function(err, candidates)
+  self:_candidates(params, dirname, params.offset, function(err, candidates)
     if err then
       return callback()
     end
@@ -36,22 +36,23 @@ source.complete = function(self, request, callback)
   end)
 end
 
-source._dirname = function(self, request)
-  local s = vim.regex(PATH_REGEX):match_str(request.context.cursor_before_line)
+source._dirname = function(self, params)
+  local s = vim.regex(PATH_REGEX):match_str(params.context.cursor_before_line)
   if not s then
     return nil
   end
 
-  local dirname = string.sub(request.context.cursor_before_line, s + 2) -- exclude '/'
-  local prefix = string.sub(request.context.cursor_before_line, 1, s + 1) -- include '/'
+  local dirname = string.sub(params.context.cursor_before_line, s + 2) -- exclude '/'
+  local prefix = string.sub(params.context.cursor_before_line, 1, s + 1) -- include '/'
 
-  local buf_dirname = vim.fn.expand(('#%d:p:h'):format(request.context.bufnr))
   if prefix:match('%.%./$') then
+    local buf_dirname = vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
     return vim.fn.resolve(buf_dirname .. '/../' .. dirname)
   elseif prefix:match('%./$') then
+      local buf_dirname = vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
     return vim.fn.resolve(buf_dirname .. '/' .. dirname)
   elseif prefix:match('~/$') then
-    return vim.fn.expand('~/' .. dirname), request.offset
+    return vim.fn.expand('~/' .. dirname), params.offset
   elseif prefix:match('%$[%a_]+/$') then
     return vim.fn.expand(prefix:match('%$[%a_]+/$') .. dirname)
   elseif prefix:match('/$') then
@@ -81,7 +82,7 @@ source._stat = function(_, path)
   return nil
 end
 
-source._candidates = function(_, context, dirname, offset, callback)
+source._candidates = function(self, params, dirname, offset, callback)
   local fs, err = vim.loop.fs_scandir(dirname)
   if err then
     return callback(err, nil)
@@ -89,7 +90,7 @@ source._candidates = function(_, context, dirname, offset, callback)
 
   local items = {}
 
-  local include_hidden = string.sub(context.cursor_before_line, offset + 1, offset + 1) == '.'
+  local include_hidden = string.sub(params.context.cursor_before_line, offset + 1, offset + 1) == '.'
   while true do
     local name, type, e = vim.loop.fs_scandir_next(fs)
     if e then
