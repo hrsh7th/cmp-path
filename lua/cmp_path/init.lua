@@ -1,7 +1,7 @@
 local cmp = require'cmp'
 
 local NAME_REGEX = [[\%([^/\\:\*?<>'"`\|]\)]]
-local PATH_REGEX = vim.regex(([[\%(/PAT\+\)*\ze/PAT*]]):gsub('PAT', NAME_REGEX))
+local PATH_REGEX = vim.regex(([[\%(/PAT\+\)*/\zePAT*]]):gsub('PAT', NAME_REGEX))
 
 local source = {}
 
@@ -14,7 +14,7 @@ source.get_trigger_characters = function()
 end
 
 source.get_keyword_pattern = function()
-  return '/' .. NAME_REGEX .. '*'
+  return NAME_REGEX .. '*'
 end
 
 source.complete = function(self, params, callback)
@@ -82,7 +82,7 @@ source._stat = function(_, path)
   return nil
 end
 
-source._candidates = function(self, params, dirname, offset, callback)
+source._candidates = function(_, params, dirname, offset, callback)
   local fs, err = vim.loop.fs_scandir(dirname)
   if err then
     return callback(err, nil)
@@ -108,9 +108,9 @@ source._candidates = function(self, params, dirname, offset, callback)
     if accept then
       if type == 'directory' then
         table.insert(items, {
-          word = '/' .. name,
-          label = '/' .. name,
-          insertText = '/' .. name .. '/',
+          word = name,
+          label = name,
+          insertText = name .. '/',
           kind = cmp.lsp.CompletionItemKind.Folder,
         })
       elseif type == 'link' then
@@ -118,16 +118,16 @@ source._candidates = function(self, params, dirname, offset, callback)
         if stat then
           if stat.type == 'directory' then
             table.insert(items, {
-              word = '/' .. name,
-              label = '/' .. name,
-              insertText = '/' .. name .. '/',
+              word = name,
+              label = name,
+              insertText = name .. '/',
               kind = cmp.lsp.CompletionItemKind.Folder,
             })
           else
             table.insert(items, {
               label = name,
-              filterText = '/' .. name,
-              insertText = '/' .. name,
+              filterText = name,
+              insertText = name,
               kind = cmp.lsp.CompletionItemKind.File,
             })
           end
@@ -135,8 +135,8 @@ source._candidates = function(self, params, dirname, offset, callback)
       elseif type == 'file' then
         table.insert(items, {
           label = name,
-          filterText = '/' .. name,
-          insertText = '/' .. name,
+          filterText = name,
+          insertText = name,
           kind = cmp.lsp.CompletionItemKind.File,
         })
       end
