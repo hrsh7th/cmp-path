@@ -1,7 +1,7 @@
 local cmp = require'cmp'
 
-local NAME_REGEX = [[\%([^/\\:\*?<>'"`\|]\)]]
-local PATH_REGEX = vim.regex(([[\%(/PAT\+\)*/\zePAT*]]):gsub('PAT', NAME_REGEX))
+local NAME_REGEX = '\\%([^/\\\\:\\*?<>\'"`\\|]\\)'
+local PATH_REGEX = vim.regex(([[\%(/PAT\+\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX))
 
 local source = {}
 
