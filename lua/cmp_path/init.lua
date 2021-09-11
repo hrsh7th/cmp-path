@@ -90,7 +90,7 @@ source._candidates = function(_, params, dirname, offset, callback)
 
   local items = {}
 
-  local include_hidden = string.sub(params.context.cursor_before_line, offset + 1, offset + 1) == '.'
+  local include_hidden = string.sub(params.context.cursor_before_line, offset, offset) == '.'
   while true do
     local name, type, e = vim.loop.fs_scandir_next(fs)
     if e then
