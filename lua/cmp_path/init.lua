@@ -6,7 +6,7 @@ local PATH_REGEX = vim.regex(([[\%(/PAT\+\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX)
 local source = {}
 
 local defaults = {
-  max_lines = 10,
+  max_lines = 20,
 }
 
 source.new = function()
@@ -87,8 +87,15 @@ source._stat = function(_, path)
 end
 
 local function lines_from(file, count)
-  lines = {'```'}
-  for line in io.lines(file) do
+  local bfile = assert(io.open(file, 'rb'))
+  local first_k = bfile:read(1024)
+  for c in first_k:gmatch('.') do
+    if string.byte(c) == 0 then
+      return {'binary file'}
+    end
+  end
+  local lines = {'```'}
+  for line in first_k:gmatch("[^\r\n]+") do
     lines[#lines + 1] = line
     if count ~= nil and #lines >= count then
      break
