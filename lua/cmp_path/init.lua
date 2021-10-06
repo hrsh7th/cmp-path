@@ -42,7 +42,7 @@ source._dirname = function(self, params)
     return nil
   end
 
-  local dirname = string.sub(params.context.cursor_before_line, s + 2) -- exclude '/'
+  local dirname = string.gsub(string.sub(params.context.cursor_before_line, s + 2), '%a*$', '') -- exclude '/'
   local prefix = string.sub(params.context.cursor_before_line, 1, s + 1) -- include '/'
 
   if prefix:match('%.%./$') then
