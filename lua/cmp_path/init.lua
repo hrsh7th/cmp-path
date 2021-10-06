@@ -1,12 +1,12 @@
 local cmp = require'cmp'
 
-local NAME_REGEX = [[\%([^/\\:\*?<>'"`\|]\)]]
-local PATH_REGEX = ([[\%(/PAT\+\)*\ze/PAT*]]):gsub('PAT', NAME_REGEX)
+local NAME_REGEX = '\\%([^/\\\\:\\*?<>\'"`\\|]\\)'
+local PATH_REGEX = vim.regex(([[\%(/PAT\+\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX))
 
 local source = {}
 
 local defaults = {
-	max_lines = 10,
+  max_lines = 10,
 }
 
 source.new = function()
@@ -18,11 +18,11 @@ source.get_trigger_characters = function()
 end
 
 source.get_keyword_pattern = function()
-  return '/' .. NAME_REGEX .. '*'
+  return NAME_REGEX .. '*'
 end
 
-source.complete = function(self, request, callback)
-  local dirname = self:_dirname(request)
+source.complete = function(self, params, callback)
+  local dirname = self:_dirname(params)
   if not dirname then
     return callback()
   end
@@ -32,7 +32,7 @@ source.complete = function(self, request, callback)
     return callback()
   end
 
-  self:_candidates(request.context, dirname, request.offset, function(err, candidates)
+  self:_candidates(params, dirname, params.offset, function(err, candidates)
     if err then
       return callback()
     end
@@ -40,22 +40,23 @@ source.complete = function(self, request, callback)
   end)
 end
 
-source._dirname = function(self, request)
-  local s = vim.regex(PATH_REGEX):match_str(request.context.cursor_before_line)
+source._dirname = function(self, params)
+  local s = PATH_REGEX:match_str(params.context.cursor_before_line)
   if not s then
     return nil
   end
 
-  local dirname = string.sub(request.context.cursor_before_line, s + 2) -- exclude '/'
-  local prefix = string.sub(request.context.cursor_before_line, 1, s + 1) -- include '/'
+  local dirname = string.gsub(string.sub(params.context.cursor_before_line, s + 2), '%a*$', '') -- exclude '/'
+  local prefix = string.sub(params.context.cursor_before_line, 1, s + 1) -- include '/'
 
-  local buf_dirname = vim.fn.expand(('#%d:p:h'):format(request.context.bufnr))
   if prefix:match('%.%./$') then
+    local buf_dirname = vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
     return vim.fn.resolve(buf_dirname .. '/../' .. dirname)
   elseif prefix:match('%./$') then
+      local buf_dirname = vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
     return vim.fn.resolve(buf_dirname .. '/' .. dirname)
   elseif prefix:match('~/$') then
-    return vim.fn.expand('~/' .. dirname), request.offset
+    return vim.fn.expand('~/' .. dirname), params.offset
   elseif prefix:match('%$[%a_]+/$') then
     return vim.fn.expand(prefix:match('%$[%a_]+/$') .. dirname)
   elseif prefix:match('/$') then
@@ -90,7 +91,7 @@ local function lines_from(file, count)
   for line in io.lines(file) do
     lines[#lines + 1] = line
     if count ~= nil and #lines >= count then
-	    break
+     break
     end
   end
   lines[#lines + 1] = '```'
@@ -98,15 +99,15 @@ local function lines_from(file, count)
 end
 
 local function try_get_lines(file, count)
-	status, ret = pcall(lines_from, file, count)
-	if status then
-		return ret
-	else
-		return nil
-	end
+  status, ret = pcall(lines_from, file, count)
+  if status then
+    return ret
+  else
+    return nil
+  end
 end
 
-source._candidates = function(_, context, dirname, offset, callback)
+source._candidates = function(_, params, dirname, offset, callback)
   local fs, err = vim.loop.fs_scandir(dirname)
   if err then
     return callback(err, nil)
@@ -115,7 +116,7 @@ source._candidates = function(_, context, dirname, offset, callback)
   local items = {}
 
 
-  local include_hidden = string.sub(context.cursor_before_line, offset + 1, offset + 1) == '.'
+  local include_hidden = string.sub(params.context.cursor_before_line, offset, offset) == '.'
   while true do
     local name, type, e = vim.loop.fs_scandir_next(fs)
     if e then
@@ -133,9 +134,9 @@ source._candidates = function(_, context, dirname, offset, callback)
     if accept then
       if type == 'directory' then
         table.insert(items, {
-          word = '/' .. name,
-          label = '/' .. name,
-          insertText = '/' .. name .. '/',
+          word = name,
+          label = name,
+          insertText = name .. '/',
           kind = cmp.lsp.CompletionItemKind.Folder,
         })
       elseif type == 'link' then
@@ -143,28 +144,28 @@ source._candidates = function(_, context, dirname, offset, callback)
         if stat then
           if stat.type == 'directory' then
             table.insert(items, {
-              word = '/' .. name,
-              label = '/' .. name,
-              insertText = '/' .. name .. '/',
+              word = name,
+              label = name,
+              insertText = name .. '/',
               kind = cmp.lsp.CompletionItemKind.Folder,
             })
           else
             table.insert(items, {
               label = name,
-              filterText = '/' .. name,
-              insertText = '/' .. name,
+              filterText = name,
+              insertText = name,
               kind = cmp.lsp.CompletionItemKind.File,
-	      data = {path = dirname .. '/' .. name},
+              data = {path = dirname .. '/' .. name},
             })
           end
         end
       elseif type == 'file' then
         table.insert(items, {
           label = name,
-          filterText = '/' .. name,
-          insertText = '/' .. name,
+          filterText = name,
+          insertText = name,
           kind = cmp.lsp.CompletionItemKind.File,
-	  data = {path = dirname .. '/' .. name},
+          data = {path = dirname .. '/' .. name},
         })
       end
     end
@@ -183,7 +184,7 @@ end
 
 function source:resolve(completion_item, callback)
   if completion_item.kind == cmp.lsp.CompletionItemKind.File then
-	completion_item.documentation = try_get_lines(completion_item.data.path, 10)
+    completion_item.documentation = try_get_lines(completion_item.data.path, defaults.max_lines)
   end
   callback(completion_item)
 end
