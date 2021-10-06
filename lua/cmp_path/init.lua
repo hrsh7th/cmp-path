@@ -89,10 +89,8 @@ end
 local function lines_from(file, count)
   local bfile = assert(io.open(file, 'rb'))
   local first_k = bfile:read(1024)
-  for c in first_k:gmatch('.') do
-    if string.byte(c) == 0 then
-      return {'binary file'}
-    end
+  if first_k:find('\0') then
+	  return {'binary file'}
   end
   local lines = {'```'}
   for line in first_k:gmatch("[^\r\n]+") do
