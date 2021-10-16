@@ -45,11 +45,13 @@ source._dirname = function(self, params)
   local dirname = string.gsub(string.sub(params.context.cursor_before_line, s + 2), '%a*$', '') -- exclude '/'
   local prefix = string.sub(params.context.cursor_before_line, 1, s + 1) -- include '/'
 
+  local buf_dirname = vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
+  if vim.api.nvim_get_mode().mode == 'c' then
+    buf_dirname = vim.fn.getcwd()
+  end
   if prefix:match('%.%./$') then
-    local buf_dirname = vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
     return vim.fn.resolve(buf_dirname .. '/../' .. dirname)
   elseif prefix:match('%./$') then
-      local buf_dirname = vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
     return vim.fn.resolve(buf_dirname .. '/' .. dirname)
   elseif prefix:match('~/$') then
     return vim.fn.expand('~/' .. dirname), params.offset
