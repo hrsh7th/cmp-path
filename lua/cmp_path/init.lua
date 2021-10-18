@@ -54,9 +54,9 @@ source._dirname = function(self, params)
   elseif prefix:match('%./$') then
     return vim.fn.resolve(buf_dirname .. '/' .. dirname)
   elseif prefix:match('~/$') then
-    return vim.fn.expand('~/' .. dirname), params.offset
+    return vim.fn.resolve(vim.fn.expand('~') .. '/' .. dirname)
   elseif prefix:match('%$[%a_]+/$') then
-    return vim.fn.expand(prefix:match('%$[%a_]+/$') .. dirname)
+    return vim.fn.resolve(vim.fn.getenv(prefix:match('%$([%a_]+)/$')) .. '/' .. dirname)
   elseif prefix:match('/$') then
     local accept = true
     -- Ignore URL components
@@ -157,4 +157,3 @@ source._is_slash_comment = function(_)
 end
 
 return source
-
