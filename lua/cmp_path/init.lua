@@ -5,6 +5,10 @@ local PATH_REGEX = vim.regex(([[\%(/PAT\+\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX)
 
 local source = {}
 
+local defaults = {
+  max_lines = 20,
+}
+
 source.new = function()
   return setmetatable({}, { __index = source })
 end
@@ -84,6 +88,32 @@ source._stat = function(_, path)
   return nil
 end
 
+local function lines_from(file, count)
+  local bfile = assert(io.open(file, 'rb'))
+  local first_k = bfile:read(1024)
+  if first_k:find('\0') then
+	  return {'binary file'}
+  end
+  local lines = {'```'}
+  for line in first_k:gmatch("[^\r\n]+") do
+    lines[#lines + 1] = line
+    if count ~= nil and #lines >= count then
+     break
+    end
+  end
+  lines[#lines + 1] = '```'
+  return lines
+end
+
+local function try_get_lines(file, count)
+  status, ret = pcall(lines_from, file, count)
+  if status then
+    return ret
+  else
+    return nil
+  end
+end
+
 source._candidates = function(_, params, dirname, offset, callback)
   local fs, err = vim.loop.fs_scandir(dirname)
   if err then
@@ -91,6 +121,7 @@ source._candidates = function(_, params, dirname, offset, callback)
   end
 
   local items = {}
+
 
   local include_hidden = string.sub(params.context.cursor_before_line, offset, offset) == '.'
   while true do
@@ -131,6 +162,7 @@ source._candidates = function(_, params, dirname, offset, callback)
               filterText = name,
               insertText = name,
               kind = cmp.lsp.CompletionItemKind.File,
+              data = {path = dirname .. '/' .. name},
             })
           end
         end
@@ -140,6 +172,7 @@ source._candidates = function(_, params, dirname, offset, callback)
           filterText = name,
           insertText = name,
           kind = cmp.lsp.CompletionItemKind.File,
+          data = {path = dirname .. '/' .. name},
         })
       end
     end
@@ -154,6 +187,13 @@ source._is_slash_comment = function(_)
   is_slash_comment = is_slash_comment or commentstring:match('/%*')
   is_slash_comment = is_slash_comment or commentstring:match('//')
   return is_slash_comment and not no_filetype
+end
+
+function source:resolve(completion_item, callback)
+  if completion_item.kind == cmp.lsp.CompletionItemKind.File then
+    completion_item.documentation = try_get_lines(completion_item.data.path, defaults.max_lines)
+  end
+  callback(completion_item)
 end
 
 return source
