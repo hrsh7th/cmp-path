@@ -51,13 +51,21 @@ source._dirname = function(self, params)
   end
   if prefix:match('%.%./$') then
     return vim.fn.resolve(buf_dirname .. '/../' .. dirname)
-  elseif prefix:match('%./$') then
+  end
+  if prefix:match('%./$') then
     return vim.fn.resolve(buf_dirname .. '/' .. dirname)
-  elseif prefix:match('~/$') then
+  end
+  if prefix:match('~/$') then
     return vim.fn.resolve(vim.fn.expand('~') .. '/' .. dirname)
-  elseif prefix:match('%$[%a_]+/$') then
-    return vim.fn.resolve(vim.fn.getenv(prefix:match('%$([%a_]+)/$')) .. '/' .. dirname)
-  elseif prefix:match('/$') then
+  end
+  local env_var_name = prefix:match('%$([%a_]+)/$')
+  if env_var_name then
+    local env_var_value = vim.fn.getenv(env_var_name)
+    if env_var_value ~= vim.NIL then
+      return vim.fn.resolve(env_var_value .. '/' .. dirname)
+    end
+  end
+  if prefix:match('/$') then
     local accept = true
     -- Ignore URL components
     accept = accept and not prefix:match('%a/$')
