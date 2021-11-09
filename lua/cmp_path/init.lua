@@ -145,6 +145,16 @@ source._candidates = function(_, params, dirname, offset, callback)
     accept = accept or include_hidden
     accept = accept or name:sub(1, 1) ~= '.'
 
+    local stat = nil
+    -- Stat when fs_scandir_next doesn't return file type
+    if type == nil then
+      stat = vim.loop.fs_stat(dirname .. '/' .. name)
+      if not stat then
+        break
+      end
+      type = stat.type
+    end
+
     -- Create items
     if accept then
       if type == 'directory' then
@@ -155,7 +165,9 @@ source._candidates = function(_, params, dirname, offset, callback)
           kind = cmp.lsp.CompletionItemKind.Folder,
         })
       elseif type == 'link' then
-        local stat = vim.loop.fs_stat(dirname .. '/' .. name)
+        if not stat then
+          stat = vim.loop.fs_stat(dirname .. '/' .. name)
+        end
         if stat then
           if stat.type == 'directory' then
             table.insert(items, {
