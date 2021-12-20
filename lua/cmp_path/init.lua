@@ -27,12 +27,8 @@ source.complete = function(self, params, callback)
     return callback()
   end
 
-  local stat = self:_stat(dirname)
-  if not stat then
-    return callback()
-  end
-
-  self:_candidates(params, dirname, params.offset, function(err, candidates)
+  local include_hidden = string.sub(params.context.cursor_before_line, params.offset, params.offset) == '.'
+  self:_candidates(dirname, include_hidden, function(err, candidates)
     if err then
       return callback()
     end
@@ -88,14 +84,6 @@ source._dirname = function(self, params)
   return nil
 end
 
-source._stat = function(_, path)
-  local stat = vim.loop.fs_stat(path)
-  if stat then
-    return stat
-  end
-  return nil
-end
-
 local function lines_from(file, count)
   local bfile = assert(io.open(file, 'rb'))
   local first_k = bfile:read(1024)
@@ -113,7 +101,7 @@ local function lines_from(file, count)
   return lines
 end
 
-source._candidates = function(_, params, dirname, offset, callback)
+source._candidates = function(_, dirname, include_hidden, callback)
   local fs, err = vim.loop.fs_scandir(dirname)
   if err then
     return callback(err, nil)
@@ -121,8 +109,6 @@ source._candidates = function(_, params, dirname, offset, callback)
 
   local items = {}
 
-
-  local include_hidden = string.sub(params.context.cursor_before_line, offset, offset) == '.'
   while true do
     local name, type, e = vim.loop.fs_scandir_next(fs)
     if e then
@@ -132,62 +118,46 @@ source._candidates = function(_, params, dirname, offset, callback)
       break
     end
 
-    local accept = false
-    accept = accept or include_hidden
-    accept = accept or name:sub(1, 1) ~= '.'
+    if not (include_hidden or string.sub(name, 1, 1) ~= '.') then
+      goto continue
+    end
 
-    local stat = nil
-    -- Stat when fs_scandir_next doesn't return file type
-    if type == nil then
-      stat = vim.loop.fs_stat(dirname .. '/' .. name)
-      if not stat then
-        break
-      end
+    local path = dirname .. '/' .. name
+    local stat = vim.loop.fs_stat(path)
+    local lstat = nil
+    if stat then
       type = stat.type
+    elseif type == 'link' then
+      -- Broken symlink
+      lstat = vim.loop.fs_lstat(dirname)
+      if not lstat then
+        goto continue
+      end
+    else
+      goto continue
     end
 
-    -- Create items
-    if accept then
-      if type == 'directory' then
-        table.insert(items, {
-          word = name,
-          label = name,
-          insertText = name .. '/',
-          kind = cmp.lsp.CompletionItemKind.Folder,
-        })
-      elseif type == 'link' then
-        if not stat then
-          stat = vim.loop.fs_stat(dirname .. '/' .. name)
-        end
-        if stat then
-          if stat.type == 'directory' then
-            table.insert(items, {
-              word = name,
-              label = name,
-              insertText = name .. '/',
-              kind = cmp.lsp.CompletionItemKind.Folder,
-            })
-          else
-            table.insert(items, {
-              label = name,
-              filterText = name,
-              insertText = name,
-              kind = cmp.lsp.CompletionItemKind.File,
-              data = {path = dirname .. '/' .. name},
-            })
-          end
-        end
-      elseif type == 'file' then
-        table.insert(items, {
-          label = name,
-          filterText = name,
-          insertText = name,
-          kind = cmp.lsp.CompletionItemKind.File,
-          data = {path = dirname .. '/' .. name},
-        })
-      end
+    local item = {
+      label = name,
+      filterText = name,
+      insertText = name,
+      kind = cmp.lsp.CompletionItemKind.File,
+      data = {
+        path = path,
+        type = type,
+        stat = stat,
+        lstat = lstat,
+      },
+    }
+    if type == 'directory' then
+      item.kind = cmp.lsp.CompletionItemKind.Folder
+      item.insertText = name .. '/'
     end
+    table.insert(items, item)
+
+    ::continue::
   end
+
   callback(nil, items)
 end
 
@@ -201,13 +171,11 @@ source._is_slash_comment = function(_)
 end
 
 function source:resolve(completion_item, callback)
-  if completion_item.kind == cmp.lsp.CompletionItemKind.File then
-    local path = completion_item.data.path
-    if not vim.startswith(path, '/dev') then
-      local ok, preview_lines = pcall(lines_from, path, defaults.max_lines)
-      if ok then
-        completion_item.documentation = preview_lines
-      end
+  local data = completion_item.data
+  if data.stat and data.stat.type == 'file' then
+    local ok, preview_lines = pcall(lines_from, data.path, defaults.max_lines)
+    if ok then
+      completion_item.documentation = preview_lines
     end
   end
   callback(completion_item)
