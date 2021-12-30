@@ -109,32 +109,24 @@ source._candidates = function(_, dirname, include_hidden, callback)
 
   local items = {}
 
-  while true do
-    local name, type, e = vim.loop.fs_scandir_next(fs)
-    if e then
-      return callback(type, nil)
-    end
-    if not name then
-      break
-    end
-
+  local function create_item(name, fs_type)
     if not (include_hidden or string.sub(name, 1, 1) ~= '.') then
-      goto continue
+      return
     end
 
     local path = dirname .. '/' .. name
     local stat = vim.loop.fs_stat(path)
     local lstat = nil
     if stat then
-      type = stat.type
-    elseif type == 'link' then
+      fs_type = stat.type
+    elseif fs_type == 'link' then
       -- Broken symlink
       lstat = vim.loop.fs_lstat(dirname)
       if not lstat then
-        goto continue
+        return
       end
     else
-      goto continue
+      return
     end
 
     local item = {
@@ -144,20 +136,29 @@ source._candidates = function(_, dirname, include_hidden, callback)
       kind = cmp.lsp.CompletionItemKind.File,
       data = {
         path = path,
-        type = type,
+        type = fs_type,
         stat = stat,
         lstat = lstat,
       },
     }
-    if type == 'directory' then
+    if fs_type == 'directory' then
       item.kind = cmp.lsp.CompletionItemKind.Folder
       item.word = name
       item.label = name .. '/'
       item.insertText = name .. '/'
     end
     table.insert(items, item)
+  end
 
-    ::continue::
+  while true do
+    local name, fs_type, e = vim.loop.fs_scandir_next(fs)
+    if e then
+      return callback(fs_type, nil)
+    end
+    if not name then
+      break
+    end
+    create_item(name, fs_type)
   end
 
   callback(nil, items)
