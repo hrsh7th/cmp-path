@@ -143,7 +143,6 @@ source._candidates = function(_, dirname, include_hidden, callback)
     }
     if fs_type == 'directory' then
       item.kind = cmp.lsp.CompletionItemKind.Folder
-      item.word = name
       item.label = name .. '/'
       item.insertText = name .. '/'
     end
