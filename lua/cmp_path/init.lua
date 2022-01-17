@@ -5,12 +5,30 @@ local PATH_REGEX = vim.regex(([[\%(/PAT\+\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX)
 
 local source = {}
 
-local defaults = {
+local constants = {
   max_lines = 20,
+}
+
+
+---@class cmp_path.Options
+---@field public trailing_slash boolean
+
+---@type cmp_buffer.Options
+local defaults = {
+  trailing_slash = false,
 }
 
 source.new = function()
   return setmetatable({}, { __index = source })
+end
+
+---@return cmp_buffer.Options
+source._validate_options = function(_, params)
+  local opts = vim.tbl_deep_extend('keep', params.option, defaults)
+  vim.validate({
+    trailing_slash = { opts.trailing_slash, 'boolean' },
+  })
+  return opts
 end
 
 source.get_trigger_characters = function()
@@ -22,13 +40,15 @@ source.get_keyword_pattern = function()
 end
 
 source.complete = function(self, params, callback)
+  local opts = self:_validate_options(params)
+
   local dirname = self:_dirname(params)
   if not dirname then
     return callback()
   end
 
   local include_hidden = string.sub(params.context.cursor_before_line, params.offset, params.offset) == '.'
-  self:_candidates(dirname, include_hidden, function(err, candidates)
+  self:_candidates(dirname, include_hidden, opts, function(err, candidates)
     if err then
       return callback()
     end
@@ -101,7 +121,7 @@ local function lines_from(file, count)
   return lines
 end
 
-source._candidates = function(_, dirname, include_hidden, callback)
+source._candidates = function(_, dirname, include_hidden, opts, callback)
   local fs, err = vim.loop.fs_scandir(dirname)
   if err then
     return callback(err, nil)
@@ -143,9 +163,11 @@ source._candidates = function(_, dirname, include_hidden, callback)
     }
     if fs_type == 'directory' then
       item.kind = cmp.lsp.CompletionItemKind.Folder
-      item.word = name
       item.label = name .. '/'
       item.insertText = name .. '/'
+      if not opts.trailing_slash then
+        item.word = name
+      end
     end
     table.insert(items, item)
   end
@@ -176,7 +198,7 @@ end
 function source:resolve(completion_item, callback)
   local data = completion_item.data
   if data.stat and data.stat.type == 'file' then
-    local ok, preview_lines = pcall(lines_from, data.path, defaults.max_lines)
+    local ok, preview_lines = pcall(lines_from, data.path, constants.max_lines)
     if ok then
       completion_item.documentation = preview_lines
     end
