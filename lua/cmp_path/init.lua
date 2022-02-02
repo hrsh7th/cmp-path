@@ -16,6 +16,9 @@ local constants = {
 ---@type cmp_buffer.Options
 local defaults = {
   trailing_slash = false,
+  get_cwd = function(params)
+    return vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
+  end,
 }
 
 source.new = function()
@@ -27,6 +30,7 @@ source._validate_options = function(_, params)
   local opts = vim.tbl_deep_extend('keep', params.option, defaults)
   vim.validate({
     trailing_slash = { opts.trailing_slash, 'boolean' },
+    get_cwd = { opts.get_cwd, 'function' },
   })
   return opts
 end
@@ -42,7 +46,7 @@ end
 source.complete = function(self, params, callback)
   local opts = self:_validate_options(params)
 
-  local dirname = self:_dirname(params)
+  local dirname = self:_dirname(params, opts)
   if not dirname then
     return callback()
   end
@@ -56,7 +60,7 @@ source.complete = function(self, params, callback)
   end)
 end
 
-source._dirname = function(self, params)
+source._dirname = function(self, params, opts)
   local s = PATH_REGEX:match_str(params.context.cursor_before_line)
   if not s then
     return nil
@@ -65,7 +69,7 @@ source._dirname = function(self, params)
   local dirname = string.gsub(string.sub(params.context.cursor_before_line, s + 2), '%a*$', '') -- exclude '/'
   local prefix = string.sub(params.context.cursor_before_line, 1, s + 1) -- include '/'
 
-  local buf_dirname = vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
+  local buf_dirname = opts.get_cwd(params)
   if vim.api.nvim_get_mode().mode == 'c' then
     buf_dirname = vim.fn.getcwd()
   end
