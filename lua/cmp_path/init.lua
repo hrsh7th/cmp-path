@@ -9,6 +9,9 @@ local constants = {
   max_lines = 20,
 }
 
+-- Heuristic to detect if running on windows and _not_ wsl
+local is_windows = vim.fn.has("windows") and not vim.fn.has("unix")
+
 
 ---@class cmp_path.Options
 ---@field public trailing_slash boolean
@@ -89,7 +92,7 @@ source._dirname = function(self, params, opts)
       return vim.fn.resolve(env_var_value .. '/' .. dirname)
     end
   end
-  if prefix:match('/$') then
+  if prefix:match('/$') or (is_windows and prefix:match('%a://')) then
     local accept = true
     -- Ignore URL components
     accept = accept and not prefix:match('%a/$')
