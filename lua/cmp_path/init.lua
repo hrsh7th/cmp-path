@@ -9,6 +9,7 @@ local constants = {
   max_lines = 20,
 }
 
+local is_windows = (vim.fn.has("windows") == 1) and (vim.fn.has("unix") == 0)
 
 ---@class cmp_path.Options
 ---@field public trailing_slash boolean
@@ -60,6 +61,20 @@ source.complete = function(self, params, callback)
   end)
 end
 
+
+local function is_url(prefix)
+
+    scheme = prefix:match('%a+://$')
+
+    -- Handle special case of drive letters on windows
+    if (is_windows and scheme and string.len(scheme) == 4) then
+        return false
+    end
+
+    return scheme or prefix:match('%a+:/$')
+
+end
+
 source._dirname = function(self, params, opts)
   local s = PATH_REGEX:match_str(params.context.cursor_before_line)
   if not s then
@@ -89,12 +104,21 @@ source._dirname = function(self, params, opts)
       return vim.fn.resolve(env_var_value .. '/' .. dirname)
     end
   end
-  if prefix:match('/$') then
+
+  if is_windows then
+      start = prefix:match('%a://$')
+  end
+
+  if not start then
+      start = prefix:match('/$')
+  end
+
+  if start then
     local accept = true
     -- Ignore URL components
     accept = accept and not prefix:match('%a/$')
     -- Ignore URL scheme
-    accept = accept and not prefix:match('%a+:/$') and not prefix:match('%a+://$')
+    accept = accept and not is_url(prefix)
     -- Ignore HTML closing tags
     accept = accept and not prefix:match('</$')
     -- Ignore math calculation
@@ -102,7 +126,7 @@ source._dirname = function(self, params, opts)
     -- Ignore / comment
     accept = accept and (not prefix:match('^[%s/]*$') or not self:_is_slash_comment())
     if accept then
-      return vim.fn.resolve('/' .. dirname)
+      return vim.fn.resolve(start .. dirname)
     end
   end
   return nil
