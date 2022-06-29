@@ -113,7 +113,7 @@ local function lines_from(file, count)
   if first_k:find('\0') then
     return {'binary file'}
   end
-  local lines = {'```' .. vim.filetype.match { filename = file }}
+  local lines = { '```' .. (vim.filetype.match { filename = file } or '') }
   for line in first_k:gmatch("[^\r\n]+") do
     lines[#lines + 1] = line
     if count ~= nil and #lines >= count then
