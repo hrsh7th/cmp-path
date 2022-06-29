@@ -9,7 +9,6 @@ local constants = {
   max_lines = 20,
 }
 
-
 ---@class cmp_path.Options
 ---@field public trailing_slash boolean
 
@@ -114,7 +113,7 @@ local function lines_from(file, count)
   if first_k:find('\0') then
     return {'binary file'}
   end
-  local lines = {'```'}
+  local lines = {'```' .. vim.filetype.match { filename = file }}
   for line in first_k:gmatch("[^\r\n]+") do
     lines[#lines + 1] = line
     if count ~= nil and #lines >= count then
