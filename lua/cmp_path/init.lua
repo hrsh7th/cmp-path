@@ -111,7 +111,7 @@ local function lines_from(file, count)
   local bfile = assert(io.open(file, 'rb'))
   local first_k = bfile:read(1024)
   if first_k:find('\0') then
-    return {'binary file'}
+    return { kind = cmp.lsp.MarkupKind.PlainText, value = 'binary file' }
   end
   local lines = { '```' .. (vim.filetype.match { filename = file } or '') }
   for line in first_k:gmatch("[^\r\n]+") do
@@ -121,7 +121,7 @@ local function lines_from(file, count)
     end
   end
   lines[#lines + 1] = '```'
-  return lines
+  return { kind = cmp.lsp.MarkupKind.Markdown, value = table.concat(lines, '\n') }
 end
 
 source._candidates = function(_, dirname, include_hidden, opts, callback)
