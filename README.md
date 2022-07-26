@@ -42,9 +42,3 @@ Specify if completed directory names should include a trailing slash. Enabling t
 _Default:_ returns the current working directory of the current buffer
 
 Specifies the base directory for relative paths.
-
-### allow_space (type: boolean)
-
-_Default:_ false
-
-Specifies the pathname regex should contain the space character.

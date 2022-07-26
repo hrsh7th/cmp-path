@@ -1,9 +1,7 @@
 local cmp = require 'cmp'
 
 local NAME_REGEX = '\\%([^/\\\\:\\*?<>\'"`\\|]\\)'
-local NAME_REGEX_WITHOUT_SPACE = '\\%([^/\\\\:\\*?<>\'"`\\| ]\\)'
-local PATH_REGEX = vim.regex(([[\%(/PAT\+\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX))
-local PATH_REGEX_WITHOUT_SPACE = vim.regex(([[\%(/PAT\+\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX_WITHOUT_SPACE))
+local PATH_REGEX = vim.regex(([[\%(\%(/PAT*[^/\\\\:\\*?<>\'"`\\| .~]\)\|\%(/\.\.\)\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX))
 
 local source = {}
 
@@ -13,13 +11,11 @@ local constants = {
 
 ---@class cmp_path.Option
 ---@field public trailing_slash boolean
----@field public allow_space boolean
 ---@field public get_cwd fun(): string
 
 ---@type cmp_path.Option
 local defaults = {
   trailing_slash = false,
-  allow_space = false,
   get_cwd = function(params)
     return vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
   end,
@@ -34,11 +30,7 @@ source.get_trigger_characters = function()
 end
 
 source.get_keyword_pattern = function(self, params)
-  local option = self:_validate_option(params)
-  if option.allow_space then
-    return NAME_REGEX .. '*'
-  end
-  return NAME_REGEX_WITHOUT_SPACE .. '*'
+  return NAME_REGEX .. '*'
 end
 
 source.complete = function(self, params, callback)
@@ -72,7 +64,7 @@ source.resolve = function(self, completion_item, callback)
 end
 
 source._dirname = function(self, params, option)
-  local s = (option.allow_space and PATH_REGEX or PATH_REGEX_WITHOUT_SPACE ):match_str(params.context.cursor_before_line)
+  local s = PATH_REGEX:match_str(params.context.cursor_before_line)
   if not s then
     return nil
   end
