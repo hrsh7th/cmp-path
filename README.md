@@ -39,7 +39,7 @@ Specify if completed directory names should include a trailing slash. Enabling t
 
 ### label_trailing_slash (type: boolean)
 
-_Default:_ `false`
+_Default:_ `true`
 
 Specify if directory names in the completion menu should include a trailing slash.
 
