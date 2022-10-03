@@ -37,6 +37,12 @@ _Default:_ `false`
 
 Specify if completed directory names should include a trailing slash. Enabling this option makes this source behave like Vim's built-in path completion.
 
+### label_trailing_slash (type: boolean)
+
+_Default:_ `true`
+
+Specify if directory names in the completion menu should include a trailing slash.
+
 ### get_cwd (type: function)
 
 _Default:_ returns the current working directory of the current buffer
