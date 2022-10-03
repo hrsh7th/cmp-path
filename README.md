@@ -37,7 +37,7 @@ _Default:_ `false`
 
 Specify if completed directory names should include a trailing slash. Enabling this option makes this source behave like Vim's built-in path completion.
 
-### visual_slash (type: boolean)
+### label_trailing_slash (type: boolean)
 
 _Default:_ `false`
 

@@ -11,13 +11,13 @@ local constants = {
 
 ---@class cmp_path.Option
 ---@field public trailing_slash boolean
----@field public visual_slash boolean
+---@field public label_trailing_slash boolean
 ---@field public get_cwd fun(): string
 
 ---@type cmp_path.Option
 local defaults = {
   trailing_slash = false,
-  visual_slash = true,
+  label_trailing_slash = true,
   get_cwd = function(params)
     return vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
   end,
@@ -155,7 +155,7 @@ source._candidates = function(_, dirname, include_hidden, option, callback)
     }
     if fs_type == 'directory' then
       item.kind = cmp.lsp.CompletionItemKind.Folder
-      if option.visual_slash then
+      if option.label_trailing_slash then
         item.label = name .. '/'
       else
         item.label = name
@@ -196,7 +196,7 @@ source._validate_option = function(_, params)
   local option = vim.tbl_deep_extend('keep', params.option, defaults)
   vim.validate({
     trailing_slash = { option.trailing_slash, 'boolean' },
-    visual_slash = { option.visual_slash, 'boolean' },
+    label_trailing_slash = { option.label_trailing_slash, 'boolean' },
     get_cwd = { option.get_cwd, 'function' },
   })
   return option
