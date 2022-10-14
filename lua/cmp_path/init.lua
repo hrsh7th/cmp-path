@@ -54,9 +54,9 @@ end
 
 source.resolve = function(self, completion_item, callback)
   local data = completion_item.data
-  if data.stat and data.stat.type == 'file' then
+  if data.stat and (data.stat.type == "file" or data.stat.type == "directory") then
     local ok, documentation = pcall(function()
-      return self:_get_documentation(data.path, constants.max_lines)
+      return self:_get_documentation(data.path, constants.max_lines, data.stat.type)
     end)
     if ok then
       completion_item.documentation = documentation
@@ -202,8 +202,13 @@ source._validate_option = function(_, params)
   return option
 end
 
-source._get_documentation = function(_, filename, count)
-  local binary = assert(io.open(filename, 'rb'))
+source._get_documentation = function(_, path, count, data_stat_type)
+  local binary
+  if data_stat_type == "file" then
+    binary = assert(io.open(path, 'rb'))
+  elseif data_stat_type == "directory" then
+    binary = assert(io.popen('ls '..path))
+  end
   local first_kb = binary:read(1024)
   if first_kb:find('\0') then
     return { kind = cmp.lsp.MarkupKind.PlainText, value = 'binary file' }
@@ -217,7 +222,7 @@ source._get_documentation = function(_, filename, count)
     end
   end
 
-  local filetype = vim.filetype.match({ filename = filename })
+  local filetype = vim.filetype.match({ filename = path })
   if not filetype then
     return { kind = cmp.lsp.MarkupKind.PlainText, value = table.concat(contents, '\n') }
   end
