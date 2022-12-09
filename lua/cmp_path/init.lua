@@ -1,7 +1,13 @@
 local cmp = require 'cmp'
 
+local IS_WIN = (vim.fn.has('win32') == 1) or (vim.fn.has('win64') == 1)
 local NAME_REGEX = '\\%([^/\\\\:\\*?<>\'"`\\|]\\)'
-local PATH_REGEX = vim.regex(([[\%(\%(/PAT*[^/\\\\:\\*?<>\'"`\\| .~]\)\|\%(/\.\.\)\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX))
+local PATH_REGEX
+if IS_WIN then
+  PATH_REGEX = vim.regex(([[\%(\%([/\\]PAT*[^/\\\\:\\*?<>\'"`\\| .~]\)\|\%(/\.\.\)\)*[/\\]\zePAT*$]]):gsub('PAT', NAME_REGEX))
+else
+  PATH_REGEX = vim.regex(([[\%(\%(/PAT*[^/\\\\:\\*?<>\'"`\\| .~]\)\|\%(/\.\.\)\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX))
+end
 
 local source = {}
 
@@ -28,7 +34,11 @@ source.new = function()
 end
 
 source.get_trigger_characters = function()
-  return { '/', '.' }
+  if IS_WIN then
+    return { '/', '.', '\\' }
+  else
+    return { '/', '.' }
+  end
 end
 
 source.get_keyword_pattern = function(self, params)
@@ -73,25 +83,38 @@ source._dirname = function(self, params, option)
 
   local dirname = string.gsub(string.sub(params.context.cursor_before_line, s + 2), '%a*$', '') -- exclude '/'
   local prefix = string.sub(params.context.cursor_before_line, 1, s + 1) -- include '/'
+  local iscmdl = vim.api.nvim_get_mode().mode == 'c'
 
   local buf_dirname = option.get_cwd(params)
-  if vim.api.nvim_get_mode().mode == 'c' then
+  if iscmdl then
     buf_dirname = vim.fn.getcwd()
   end
-  if prefix:match('%.%./$') then
+  if prefix:match('%.%.[/\\]$') then
     return vim.fn.resolve(buf_dirname .. '/../' .. dirname)
   end
-  if (prefix:match('%./$') or prefix:match('"$') or prefix:match('\'$')) then
+  if (prefix:match('%.[/\\]$') or prefix:match('"$') or prefix:match('\'$')) then
     return vim.fn.resolve(buf_dirname .. '/' .. dirname)
   end
-  if prefix:match('~/$') then
+  if prefix:match('~[/\\]$') then
     return vim.fn.resolve(vim.fn.expand('~') .. '/' .. dirname)
   end
-  local env_var_name = prefix:match('%$([%a_]+)/$')
+  local env_var_name = prefix:match('%$([%a_]+)[/\\]$')
+  if not iscmdl and not env_var_name then
+    env_var_name = prefix:match('%${([%a_]+)}[/\\]$')
+    if IS_WIN and not env_var_name then
+      env_var_name = prefix:match('%%([%a_]+)%%[/\\]$')
+    end
+  end
   if env_var_name then
     local env_var_value = vim.fn.getenv(env_var_name)
     if env_var_value ~= vim.NIL then
       return vim.fn.resolve(env_var_value .. '/' .. dirname)
+    end
+  end
+  if IS_WIN then
+    local driver = prefix:match('(%a:)[/\\]$')
+    if driver then
+      return vim.fn.resolve(driver .. '/' .. dirname)
     end
   end
   if prefix:match('/$') then
