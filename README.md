@@ -48,3 +48,9 @@ Specify if directory names in the completion menu should include a trailing slas
 _Default:_ returns the current working directory of the current buffer
 
 Specifies the base directory for relative paths.
+
+### show_hidden_files_by_default (type: boolean)
+
+_Default:_ `false`
+
+Specify if hidden files should appear in the completion menu without the need of typing `.` first.
