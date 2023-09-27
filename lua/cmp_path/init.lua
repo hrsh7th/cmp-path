@@ -1,7 +1,7 @@
 local cmp = require 'cmp'
 
 local NAME_REGEX = '\\%([^/\\\\:\\*?<>\'"`\\|]\\)'
-local PATH_REGEX = vim.regex(([[\%(\%(/PAT*[^/\\\\:\\*?<>\'"`\\| .~]\)\|\%(/\.\.\)\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX))
+local PATH_REGEX = vim.regex(([[\%(\%(/PAT*[^(@/|/)\\\\:\\*?<>\'"`\\| .~]\)\|\%(/\.\.\)\)*/\zePAT*$]]):gsub('PAT', NAME_REGEX))
 
 local source = {}
 
@@ -43,6 +43,7 @@ source.complete = function(self, params, callback)
     return callback()
   end
 
+  -- print(dirname)
   local include_hidden = string.sub(params.context.cursor_before_line, params.offset, params.offset) == '.'
   self:_candidates(dirname, include_hidden, option, function(err, candidates)
     if err then
@@ -66,13 +67,15 @@ source.resolve = function(self, completion_item, callback)
 end
 
 source._dirname = function(self, params, option)
-  local s = PATH_REGEX:match_str(params.context.cursor_before_line)
+  local current_directory = vim.fn.getcwd()
+	local replaced_string = string.gsub(params.context.cursor_before_line, '"(@)', '"' .. current_directory .. '/src')
+  local s = PATH_REGEX:match_str(replaced_string)
   if not s then
     return nil
   end
 
-  local dirname = string.gsub(string.sub(params.context.cursor_before_line, s + 2), '%a*$', '') -- exclude '/'
-  local prefix = string.sub(params.context.cursor_before_line, 1, s + 1) -- include '/'
+  local dirname = string.gsub(string.sub(replaced_string, s + 2), '%a*$', '') -- exclude '/'
+  local prefix = string.sub(replaced_string, 1, s + 1) -- include '/'
 
   local buf_dirname = option.get_cwd(params)
   if vim.api.nvim_get_mode().mode == 'c' then
