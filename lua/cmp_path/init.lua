@@ -40,7 +40,7 @@ source.complete = function(self, params, callback)
 	local option = self:_validate_option(params)
 	local current_directory = vim.fn.getcwd() or ""
 	local pathMappings = option.pathMappings
-	local allCandidates = {}
+	-- local allCandidates = {}
 
 	for alias, value in pairs(pathMappings) do
 		if type(value) == "table" then
