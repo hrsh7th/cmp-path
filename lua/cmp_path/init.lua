@@ -38,13 +38,45 @@ end
 
 source.complete = function(self, params, callback)
 	local option = self:_validate_option(params)
+	local current_directory = vim.fn.getcwd() or ""
+	local pathMappings = option.pathMappings
+	local allCandidates = {}
 
-	local dirname = self:_dirname(params, option)
+	for alias, value in pairs(pathMappings) do
+		if type(value) == "table" then
+			for _, subValue in ipairs(value) do
+				local alias_string = string.gsub(subValue, "${folder}", current_directory, 1)
+				self:get_candidates(params, alias, alias_string, option, function(candidates)
+					if type(candidates) == "table" then
+						-- allCandidates = vim.tbl_deep_extend("keep", allCandidates, candidates)
+						callback(candidates)
+					end
+				end)
+			end
+		elseif type(value) == "string" then
+			local alias_string = string.gsub(value, "${folder}", current_directory, 1)
+			self:get_candidates(params, alias, alias_string, option, function(candidates)
+				if type(candidates) == "table" then
+					-- allCandidates = vim.tbl_deep_extend("keep", allCandidates, candidates)
+					callback(candidates)
+				end
+			end)
+		end
+	end
+
+	-- if next(allCandidates) then
+	-- 	callback(allCandidates)
+	-- end
+end
+
+source.get_candidates = function(self, params, alias, alias_string, option, callback)
+	local dirname = self:_dirname(params, alias, alias_string, option)
+	-- print(vim.inspect(dirname))
+	-- "/Users/lijialin/learn/my-app"
 	if not dirname then
 		return callback()
 	end
 
-	-- print(dirname)
 	local include_hidden = string.sub(params.context.cursor_before_line, params.offset, params.offset) == "."
 	self:_candidates(dirname, include_hidden, option, function(err, candidates)
 		if err then
@@ -67,15 +99,14 @@ source.resolve = function(self, completion_item, callback)
 	callback(completion_item)
 end
 
-source._dirname = function(self, params, option)
-	local current_directory = vim.fn.getcwd()
+source._dirname = function(self, params, alias, alias_string, option)
 	local replaced_string
-	local findOnlyAlias = string.find(params.context.cursor_before_line, "'@")
-	local findDualAlias = string.find(params.context.cursor_before_line, '"@')
+	local findOnlyAlias = string.find(params.context.cursor_before_line, "'" .. alias)
+	local findDualAlias = string.find(params.context.cursor_before_line, '"' .. alias)
 	if findOnlyAlias then
-		replaced_string = string.gsub(params.context.cursor_before_line, "'@", "'" .. current_directory .. "/src", 1)
+		replaced_string = string.gsub(params.context.cursor_before_line, "'" .. alias, "'" .. alias_string, 1)
 	elseif findDualAlias then
-		replaced_string = string.gsub(params.context.cursor_before_line, '"@', '"' .. current_directory .. "/src", 1)
+		replaced_string = string.gsub(params.context.cursor_before_line, '"' .. alias, '"' .. alias_string, 1)
 	else
 		replaced_string = params.context.cursor_before_line
 	end
@@ -212,6 +243,7 @@ source._validate_option = function(_, params)
 		trailing_slash = { option.trailing_slash, "boolean" },
 		label_trailing_slash = { option.label_trailing_slash, "boolean" },
 		get_cwd = { option.get_cwd, "function" },
+		pathMappings = { option.pathMappings, "table" },
 	})
 	return option
 end
