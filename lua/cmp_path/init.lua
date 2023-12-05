@@ -2,7 +2,7 @@ local cmp = require("cmp")
 
 local NAME_REGEX = "\\%([^/\\\\:\\*?<>'\"`\\|]\\)"
 local PATH_REGEX =
-	vim.regex(([[\%(\%(/PAT*[^(@/|/)\\\\:\\*?<>\'"`\\| .~]\)\|\%(/\.\.\)\)*/\zePAT*$]]):gsub("PAT", NAME_REGEX))
+		vim.regex(([[\%(\%(/PAT*[^(/|/)\\\\:\\*?<>\'"`\\|@ .~]\)\|\%(/\.\.\)\)*/\zePAT*$]]):gsub("PAT", NAME_REGEX))
 
 local source = {}
 
@@ -13,7 +13,8 @@ local constants = {
 ---@class cmp_path.Option
 ---@field public trailing_slash boolean
 ---@field public label_trailing_slash boolean
----@field public get_cwd fun(): string
+---@field public get_cwd fun(params): string
+---@field public pathMappings table
 
 ---@type cmp_path.Option
 local defaults = {
@@ -22,6 +23,7 @@ local defaults = {
 	get_cwd = function(params)
 		return vim.fn.expand(("#%d:p:h"):format(params.context.bufnr))
 	end,
+	pathMappings = {},
 }
 
 source.new = function()
@@ -32,7 +34,7 @@ source.get_trigger_characters = function()
 	return { "/", "." }
 end
 
-source.get_keyword_pattern = function(self, params)
+source.get_keyword_pattern = function()
 	return NAME_REGEX .. "*"
 end
 
@@ -40,39 +42,39 @@ source.complete = function(self, params, callback)
 	local option = self:_validate_option(params)
 	local current_directory = vim.fn.getcwd() or ""
 	local pathMappings = option.pathMappings
-	-- local allCandidates = {}
+	local allCandidates = {}
+	local addedPaths = {}
 
-	for alias, value in pairs(pathMappings) do
-		if type(value) == "table" then
-			for _, subValue in ipairs(value) do
-				local alias_string = string.gsub(subValue, "${folder}", current_directory, 1)
-				self:get_candidates(params, alias, alias_string, option, function(candidates)
-					if type(candidates) == "table" then
-						-- allCandidates = vim.tbl_deep_extend("keep", allCandidates, candidates)
-						callback(candidates)
-					end
-				end)
-			end
-		elseif type(value) == "string" then
+	local function processAlias(alias, value)
+		if type(value) == "string" then
 			local alias_string = string.gsub(value, "${folder}", current_directory, 1)
+			if vim.fn.isdirectory(alias_string) == 0 then
+				return callback()
+			end
+
 			self:get_candidates(params, alias, alias_string, option, function(candidates)
 				if type(candidates) == "table" then
-					-- allCandidates = vim.tbl_deep_extend("keep", allCandidates, candidates)
-					callback(candidates)
+					for _, candidate in ipairs(candidates) do
+						local path = candidate.data.path
+						if not addedPaths[path] then
+							table.insert(allCandidates, candidate)
+							addedPaths[path] = true
+						end
+					end
 				end
 			end)
 		end
 	end
 
-	-- if next(allCandidates) then
-	-- 	callback(allCandidates)
-	-- end
+	for alias, value in pairs(pathMappings) do
+		processAlias(alias, value)
+	end
+
+	callback(allCandidates)
 end
 
 source.get_candidates = function(self, params, alias, alias_string, option, callback)
 	local dirname = self:_dirname(params, alias, alias_string, option)
-	-- print(vim.inspect(dirname))
-	-- "/Users/lijialin/learn/my-app"
 	if not dirname then
 		return callback()
 	end
@@ -100,16 +102,8 @@ source.resolve = function(self, completion_item, callback)
 end
 
 source._dirname = function(self, params, alias, alias_string, option)
-	local replaced_string
-	local findOnlyAlias = string.find(params.context.cursor_before_line, "'" .. alias)
-	local findDualAlias = string.find(params.context.cursor_before_line, '"' .. alias)
-	if findOnlyAlias then
-		replaced_string = string.gsub(params.context.cursor_before_line, "'" .. alias, "'" .. alias_string, 1)
-	elseif findDualAlias then
-		replaced_string = string.gsub(params.context.cursor_before_line, '"' .. alias, '"' .. alias_string, 1)
-	else
-		replaced_string = params.context.cursor_before_line
-	end
+	local replaced_string = params.context.cursor_before_line:gsub("'" .. alias, "'" .. alias_string, 1):gsub('"' .. alias,
+		'"' .. alias_string, 1)
 
 	local s = PATH_REGEX:match_str(replaced_string)
 	if not s then
@@ -117,7 +111,7 @@ source._dirname = function(self, params, alias, alias_string, option)
 	end
 
 	local dirname = string.gsub(string.sub(replaced_string, s + 2), "%a*$", "") -- exclude '/'
-	local prefix = string.sub(replaced_string, 1, s + 1) -- include '/'
+	local prefix = string.sub(replaced_string, 1, s + 1)                       -- include '/'
 
 	local buf_dirname = option.get_cwd(params)
 	if vim.api.nvim_get_mode().mode == "c" then
