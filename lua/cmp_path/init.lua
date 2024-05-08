@@ -2,7 +2,7 @@ local cmp = require("cmp")
 
 local NAME_REGEX = "\\%([^/\\\\:\\*?<>'\"`\\|]\\)"
 local PATH_REGEX =
-		vim.regex(([[\%(\%(/PAT*[^(/|/)\\\\:\\*?<>\'"`\\|@ .~]\)\|\%(/\.\.\)\)*/\zePAT*$]]):gsub("PAT", NAME_REGEX))
+	vim.regex(([[\%(\%(/PAT*[^(/|/)\\\\:\\*?<>\'"`\\|@ .~]\)\|\%(/\.\.\)\)*/\zePAT*$]]):gsub("PAT", NAME_REGEX))
 
 local source = {}
 
@@ -44,6 +44,7 @@ source.complete = function(self, params, callback)
 	local pathMappings = option.pathMappings
 	local allCandidates = {}
 	local addedPaths = {}
+	local start = os.clock()
 
 	local function processAlias(alias, value)
 		if type(value) == "string" then
@@ -102,8 +103,9 @@ source.resolve = function(self, completion_item, callback)
 end
 
 source._dirname = function(self, params, alias, alias_string, option)
-	local replaced_string = params.context.cursor_before_line:gsub("'" .. alias, "'" .. alias_string, 1):gsub('"' .. alias,
-		'"' .. alias_string, 1)
+	local replaced_string = params.context.cursor_before_line
+		:gsub("'" .. alias, "'" .. alias_string, 1)
+		:gsub('"' .. alias, '"' .. alias_string, 1)
 
 	local s = PATH_REGEX:match_str(replaced_string)
 	if not s then
@@ -111,7 +113,7 @@ source._dirname = function(self, params, alias, alias_string, option)
 	end
 
 	local dirname = string.gsub(string.sub(replaced_string, s + 2), "%a*$", "") -- exclude '/'
-	local prefix = string.sub(replaced_string, 1, s + 1)                       -- include '/'
+	local prefix = string.sub(replaced_string, 1, s + 1) -- include '/'
 
 	local buf_dirname = option.get_cwd(params)
 	if vim.api.nvim_get_mode().mode == "c" then
