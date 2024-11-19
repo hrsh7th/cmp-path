@@ -44,7 +44,6 @@ source.complete = function(self, params, callback)
 	local pathMappings = option.pathMappings
 	local allCandidates = {}
 	local addedPaths = {}
-	local start = os.clock()
 
 	local function processAlias(alias, value)
 		if type(value) == "string" then
