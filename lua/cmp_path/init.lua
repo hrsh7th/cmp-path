@@ -13,6 +13,7 @@ local constants = {
 ---@field public trailing_slash boolean
 ---@field public label_trailing_slash boolean
 ---@field public get_cwd fun(): string
+---@field public max_traversed_entries number
 
 ---@type cmp_path.Option
 local defaults = {
@@ -21,6 +22,7 @@ local defaults = {
   get_cwd = function(params)
     return vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
   end,
+  max_traversed_entries = nil,
 }
 
 source.new = function()
@@ -168,7 +170,8 @@ source._candidates = function(_, dirname, include_hidden, option, callback)
     table.insert(items, item)
   end
 
-  while true do
+  local entry_count = 0
+  while option.max_traversed_entries == nil or entry_count < option.max_traversed_entries do
     local name, fs_type, e = vim.loop.fs_scandir_next(fs)
     if e then
       return callback(fs_type, nil)
@@ -177,6 +180,7 @@ source._candidates = function(_, dirname, include_hidden, option, callback)
       break
     end
     create_item(name, fs_type)
+    entry_count = entry_count + 1
   end
 
   callback(nil, items)
@@ -198,6 +202,7 @@ source._validate_option = function(_, params)
     trailing_slash = { option.trailing_slash, 'boolean' },
     label_trailing_slash = { option.label_trailing_slash, 'boolean' },
     get_cwd = { option.get_cwd, 'function' },
+    max_traversed_entries = { option.max_traversed_entries, { 'number', 'nil' }},
   })
   return option
 end
