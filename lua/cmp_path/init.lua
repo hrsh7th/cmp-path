@@ -12,7 +12,7 @@ local constants = {
 ---@class cmp_path.Option
 ---@field public trailing_slash boolean
 ---@field public label_trailing_slash boolean
----@field public get_cwd fun(): string
+---@field public get_cwd fun(): string | table
 
 ---@type cmp_path.Option
 local defaults = {
@@ -22,6 +22,18 @@ local defaults = {
     return vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
   end,
 }
+
+local uniquify_table = function(a_table)
+  local newArray = {}
+  local guard = {}
+  for _, element in ipairs(a_table) do
+    if not guard[element] then
+      guard[element] = true
+      table.insert(newArray, element)
+    end
+  end
+  return newArray
+end
 
 source.new = function()
   return setmetatable({}, { __index = source })
@@ -38,18 +50,33 @@ end
 source.complete = function(self, params, callback)
   local option = self:_validate_option(params)
 
-  local dirname = self:_dirname(params, option)
-  if not dirname then
+  local dirnames = self:_dirname(params, option)
+  if not dirnames then
     return callback()
   end
 
   local include_hidden = string.sub(params.context.cursor_before_line, params.offset, params.offset) == '.'
-  self:_candidates(dirname, include_hidden, option, function(err, candidates)
+  local all_candidates = {}
+  local all_errs = {}
+  for _, dirname in ipairs(dirnames) do
+    self:_candidates(dirname, include_hidden, option, function(err, candidates)
+      if err then
+        table.insert(all_errs, err)
+      else
+        for _, v in ipairs(candidates) do
+          table.insert(all_candidates, v)
+        end
+      end
+    end)
+  end
+
+  for _, err in ipairs(all_errs) do
     if err then
       return callback()
     end
-    callback(candidates)
-  end)
+  end
+
+  callback(all_candidates)
 end
 
 source.resolve = function(self, completion_item, callback)
@@ -74,43 +101,69 @@ source._dirname = function(self, params, option)
   local dirname = string.gsub(string.sub(params.context.cursor_before_line, s + 2), '%a*$', '') -- exclude '/'
   local prefix = string.sub(params.context.cursor_before_line, 1, s + 1) -- include '/'
 
-  local buf_dirname = option.get_cwd(params)
+  local dir_match_fn = function(a_dirname)
+    if prefix:match('%.%./$') then
+      return vim.fn.resolve(a_dirname .. '/../' .. dirname)
+    end
+    if (prefix:match('%./$') or prefix:match('"$') or prefix:match('\'$')) then
+      return vim.fn.resolve(a_dirname .. '/' .. dirname)
+    end
+    if prefix:match('~/$') then
+      return vim.fn.resolve(vim.fn.expand('~') .. '/' .. dirname)
+    end
+    local env_var_name = prefix:match('%$([%a_]+)/$')
+    if env_var_name then
+      local env_var_value = vim.fn.getenv(env_var_name)
+      if env_var_value ~= vim.NIL then
+        return vim.fn.resolve(env_var_value .. '/' .. dirname)
+      end
+    end
+    if prefix:match('/$') then
+      local accept = true
+      -- Ignore URL components
+      accept = accept and not prefix:match('%a/$')
+      -- Ignore URL scheme
+      accept = accept and not prefix:match('%a+:/$') and not prefix:match('%a+://$')
+      -- Ignore HTML closing tags
+      accept = accept and not prefix:match('</$')
+      -- Ignore math calculation
+      accept = accept and not prefix:match('[%d%)]%s*/$')
+      -- Ignore / comment
+      accept = accept and (not prefix:match('^[%s/]*$') or not self:_is_slash_comment())
+      if accept then
+        return vim.fn.resolve('/' .. dirname)
+      end
+    end
+    return nil
+  end
+
   if vim.api.nvim_get_mode().mode == 'c' then
-    buf_dirname = vim.fn.getcwd()
+    return { dir_match_fn(vim.fn.getcwd()) }
   end
-  if prefix:match('%.%./$') then
-    return vim.fn.resolve(buf_dirname .. '/../' .. dirname)
+
+  -- search_directories can be a list of strings
+  -- or a simple string (for backward compatibility)
+  local search_directories = option.get_cwd(params)
+
+  if type(search_directories) == "string"
+  then
+    return { dir_match_fn(search_directories) }
   end
-  if (prefix:match('%./$') or prefix:match('"$') or prefix:match('\'$')) then
-    return vim.fn.resolve(buf_dirname .. '/' .. dirname)
-  end
-  if prefix:match('~/$') then
-    return vim.fn.resolve(vim.fn.expand('~') .. '/' .. dirname)
-  end
-  local env_var_name = prefix:match('%$([%a_]+)/$')
-  if env_var_name then
-    local env_var_value = vim.fn.getenv(env_var_name)
-    if env_var_value ~= vim.NIL then
-      return vim.fn.resolve(env_var_value .. '/' .. dirname)
+
+  matched_dirs = {}
+  for _, a_dirname in ipairs(uniquify_table(search_directories)) do
+    matched = dir_match_fn(a_dirname)
+    if matched then
+      table.insert(matched_dirs, matched)
     end
   end
-  if prefix:match('/$') then
-    local accept = true
-    -- Ignore URL components
-    accept = accept and not prefix:match('%a/$')
-    -- Ignore URL scheme
-    accept = accept and not prefix:match('%a+:/$') and not prefix:match('%a+://$')
-    -- Ignore HTML closing tags
-    accept = accept and not prefix:match('</$')
-    -- Ignore math calculation
-    accept = accept and not prefix:match('[%d%)]%s*/$')
-    -- Ignore / comment
-    accept = accept and (not prefix:match('^[%s/]*$') or not self:_is_slash_comment())
-    if accept then
-      return vim.fn.resolve('/' .. dirname)
-    end
+
+  if next(matched_dirs) == nil
+  then
+    return nil
   end
-  return nil
+
+  return matched_dirs
 end
 
 source._candidates = function(_, dirname, include_hidden, option, callback)
