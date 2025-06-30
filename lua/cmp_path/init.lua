@@ -22,7 +22,7 @@ local constants = {
 ---@field public trailing_slash boolean
 ---@field public label_trailing_slash boolean
 ---@field public get_cwd fun(params): string
----@field public pathMappings table
+---@field public path_mappings table
 
 ---@type cmp_path.Option
 local defaults = {
@@ -31,7 +31,7 @@ local defaults = {
 	get_cwd = function(params)
 		return vim.fn.expand(("#%d:p:h"):format(params.context.bufnr))
 	end,
-	pathMappings = {},
+	path_mappings = {},
 }
 
 source.new = function()
@@ -53,7 +53,7 @@ end
 source.complete = function(self, params, callback)
 	local option = self:_validate_option(params)
 	local current_directory = vim.fn.getcwd() or ""
-	local pathMappings = option.pathMappings
+	local path_mappings = option.path_mappings
 	local allCandidates = {}
 	local addedPaths = {}
 
@@ -78,7 +78,7 @@ source.complete = function(self, params, callback)
 		end
 	end
 
-	for alias, value in pairs(pathMappings) do
+	for alias, value in pairs(path_mappings) do
 		processAlias(alias, value)
 	end
 
@@ -263,7 +263,7 @@ source._validate_option = function(_, params)
 		trailing_slash = { option.trailing_slash, "boolean" },
 		label_trailing_slash = { option.label_trailing_slash, "boolean" },
 		get_cwd = { option.get_cwd, "function" },
-		pathMappings = { option.pathMappings, "table" },
+		path_mappings = { option.path_mappings, "table" },
 	})
 	return option
 end
