@@ -4,11 +4,26 @@ nvim-cmp source for filesystem paths.
 
 # Setup
 
+support path alias, But don't start too much at a time, or there will be performance issues
 ```lua
 require'cmp'.setup {
-  sources = {
-    { name = 'path' }
-  }
+    sources = cmp.config.sources({
+        { name = 'nvim_lsp' },
+        {
+        name = 'path',
+        option = {
+            pathMappings = {
+                ['@'] = '${folder}/src',
+                -- ['/'] = '${folder}/src/public/',
+                -- ['~@'] = '${folder}/src',
+                -- ['/images'] = '${folder}/src/images',
+                -- ['/components'] = '${folder}/src/components',
+            },
+        },
+        },
+        { name = 'buffer' },
+        { name = 'luasnip' },
+    }),
 }
 ```
 
