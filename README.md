@@ -63,3 +63,13 @@ Specify if directory names in the completion menu should include a trailing slas
 _Default:_ returns the current working directory of the current buffer
 
 Specifies the base directory for relative paths.
+
+### max_traverse_entries (type: number)
+
+_Default:_ `nil`
+
+The maximum count of entries in a directory will this source traverse before returning candidates.
+
+Some directories may have a large number of entries. Users, who prefer to have a time-bounded feedback over completeness, may limit the number of entries this plugin fetches with this option.
+
+If this option is set to nil, there's no effective limit.
