@@ -4,7 +4,7 @@ nvim-cmp source for filesystem paths.
 
 # Setup
 
-```lus
+```lua
 require'cmp'.setup {
   sources = {
     { name = 'path' }
