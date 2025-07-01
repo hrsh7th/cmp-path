@@ -12,7 +12,7 @@ require'cmp'.setup {
         {
         name = 'path',
         option = {
-            path_mappings = {
+            pathMappings = {
                 ['@'] = '${folder}/src',
                 -- ['/'] = '${folder}/src/public/',
                 -- ['~@'] = '${folder}/src',
