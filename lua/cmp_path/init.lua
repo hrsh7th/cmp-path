@@ -13,6 +13,7 @@ local constants = {
 ---@field public trailing_slash boolean
 ---@field public label_trailing_slash boolean
 ---@field public get_cwd fun(): string
+---@field public show_hidden_files_by_default boolean
 
 ---@type cmp_path.Option
 local defaults = {
@@ -21,6 +22,7 @@ local defaults = {
   get_cwd = function(params)
     return vim.fn.expand(('#%d:p:h'):format(params.context.bufnr))
   end,
+  show_hidden_files_by_default = false,
 }
 
 source.new = function()
@@ -43,7 +45,7 @@ source.complete = function(self, params, callback)
     return callback()
   end
 
-  local include_hidden = string.sub(params.context.cursor_before_line, params.offset, params.offset) == '.'
+  local include_hidden = option.show_hidden_files_by_default or string.sub(params.context.cursor_before_line, params.offset, params.offset) == '.'
   self:_candidates(dirname, include_hidden, option, function(err, candidates)
     if err then
       return callback()
@@ -198,6 +200,7 @@ source._validate_option = function(_, params)
     trailing_slash = { option.trailing_slash, 'boolean' },
     label_trailing_slash = { option.label_trailing_slash, 'boolean' },
     get_cwd = { option.get_cwd, 'function' },
+    show_hidden_files_by_default = { option.show_hidden_files_by_default, 'boolean' },
   })
   return option
 end
