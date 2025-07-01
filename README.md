@@ -4,15 +4,47 @@ nvim-cmp source for filesystem paths.
 
 # Setup
 
+support path alias, But don't start too much at a time, or there will be performance issues
 ```lua
 require'cmp'.setup {
-  sources = {
-    { name = 'path' }
-  }
+    sources = cmp.config.sources({
+        { name = 'nvim_lsp' },
+        {
+        name = 'path',
+        option = {
+            path_mappings = {
+                ['@'] = '${folder}/src',
+                -- ['/'] = '${folder}/src/public/',
+                -- ['~@'] = '${folder}/src',
+                -- ['/images'] = '${folder}/src/images',
+                -- ['/components'] = '${folder}/src/components',
+            },
+        },
+        },
+        { name = 'buffer' },
+        { name = 'luasnip' },
+    }),
 }
 ```
 
+
 ## Configuration
+
+The below source configuration options are available. To set any of these options, do:
+
+```lua
+cmp.setup({
+  sources = {
+    {
+      name = 'path',
+      option = {
+        -- Options go into this table
+      },
+    },
+  },
+})
+```
+
 
 ### trailing_slash (type: boolean)
 
@@ -31,30 +63,3 @@ Specify if directory names in the completion menu should include a trailing slas
 _Default:_ returns the current working directory of the current buffer
 
 Specifies the base directory for relative paths.
-
-### path_mappings (type: table<string, string>)
-
-_Default:_ `{}`
-
-Defines custom path aliases.
-
-Key: The abbreviated path. After triggering the path completion, the path will be completed as if it had been expanded.
-
-Value: The expanded path. `${folder}` will be expanded to the CWD.
-
-Example:
-
-```lua
-{
-  name = 'path',
-  option = {
-    path_mappings = {
-        ['@'] = '${folder}/src',
-        -- ['/'] = '${folder}/src/public/',
-        -- ['~@'] = '${folder}/src',
-        -- ['/images'] = '${folder}/src/images',
-        -- ['/components'] = '${folder}/src/components',
-    },
-  }
-}
-```
