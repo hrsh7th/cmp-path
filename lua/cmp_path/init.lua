@@ -194,11 +194,17 @@ end
 ---@return cmp_path.Option
 source._validate_option = function(_, params)
   local option = vim.tbl_deep_extend('keep', params.option, defaults)
-  vim.validate({
-    trailing_slash = { option.trailing_slash, 'boolean' },
-    label_trailing_slash = { option.label_trailing_slash, 'boolean' },
-    get_cwd = { option.get_cwd, 'function' },
-  })
+  if vim.fn.has('nvim-0.11.2') == 1 then
+    vim.validate('trailing_slash', option.trailing_slash, 'boolean')
+    vim.validate('label_trailing_slash', option.label_trailing_slash, 'boolean')
+    vim.validate('get_cwd', option.get_cwd, 'function')
+  else
+    vim.validate({
+      trailing_slash = { option.trailing_slash, 'boolean' },
+      label_trailing_slash = { option.label_trailing_slash, 'boolean' },
+      get_cwd = { option.get_cwd, 'function' },
+    })
+  end
   return option
 end
 
